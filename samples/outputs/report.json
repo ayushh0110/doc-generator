@@ -1,0 +1,533 @@
+{
+  "report_rolled_forward_to_q3.docx": {
+    "template": "meridian_quarterly_report.docx",
+    "edits": [
+      {
+        "op": "replace_text",
+        "target": "p0",
+        "text": "Q3 Network Review"
+      },
+      {
+        "op": "replace_text",
+        "target": "p1",
+        "text": "Prepared for the operations board, October"
+      },
+      {
+        "op": "replace_text",
+        "target": "p3",
+        "text": "The Hull depot opened on 4 August and handled 9,120 consignments in its first eight weeks, with on-time delivery at 96.2% [S1]. **The eastern corridor now carries most of the network's growth.**"
+      },
+      {
+        "op": "set_cell",
+        "target": "t0.r5.c1",
+        "text": "128,793"
+      },
+      {
+        "op": "set_cell",
+        "target": "t0.r5.c2",
+        "text": "93.4"
+      },
+      {
+        "op": "set_cell",
+        "target": "t0.r5.c3",
+        "text": "£12.17"
+      },
+      {
+        "op": "add_row",
+        "target": "t0",
+        "after_row": 4,
+        "values": [
+          "Hull",
+          "9,120",
+          "96.2",
+          "£13.40"
+        ]
+      },
+      {
+        "op": "find_replace",
+        "find": "Meridian Freight Ltd",
+        "replace": "Meridian Freight Group Ltd"
+      },
+      {
+        "op": "set_sources",
+        "sources": [
+          {
+            "key": "S1",
+            "title": "hull_depot_notes.txt",
+            "locator": "Full text",
+            "url": "",
+            "retrieved_at": "2026-11-01"
+          }
+        ]
+      }
+    ],
+    "log": [
+      "Rewrote p0",
+      "Rewrote p1",
+      "Rewrote p3",
+      "Updated cell t0.r5.c1",
+      "Updated cell t0.r5.c2",
+      "Updated cell t0.r5.c3",
+      "Added a row to t0",
+      "Replaced \"Meridian Freight Ltd\" 1 time(s)",
+      "Listed 1 source(s)"
+    ],
+    "checks": [
+      {
+        "name": "File opens cleanly",
+        "ok": true,
+        "detail": "DOCX parsed after the edit",
+        "severity": "error"
+      },
+      {
+        "name": "Styles, theme, headers and footers unchanged",
+        "ok": true,
+        "detail": "17 parts identical",
+        "severity": "error"
+      },
+      {
+        "name": "No parts dropped",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Logos and images kept",
+        "ok": true,
+        "detail": "2 image(s) in the original",
+        "severity": "error"
+      },
+      {
+        "name": "Page size and margins unchanged",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Untouched content is byte-identical",
+        "ok": true,
+        "detail": "12 element(s) checked",
+        "severity": "error"
+      },
+      {
+        "name": "Citations point at real sources",
+        "ok": true,
+        "detail": "1 source(s) cited",
+        "severity": "error"
+      },
+      {
+        "name": "No placeholder text",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      }
+    ]
+  },
+  "new_document_from_the_same_template.docx": {
+    "template": "meridian_quarterly_report.docx",
+    "edits": [
+      {
+        "op": "replace_text",
+        "target": "p0",
+        "text": "Winter Readiness Plan"
+      },
+      {
+        "op": "replace_text",
+        "target": "p1",
+        "text": "Prepared for the safety committee, November"
+      },
+      {
+        "op": "replace_body",
+        "keep_through": "p1",
+        "blocks": [
+          {
+            "kind": "heading1",
+            "text": "Why this matters",
+            "rows": []
+          },
+          {
+            "kind": "paragraph",
+            "text": "Winter disruption costs more when it catches depots unprepared. This plan sets out what each site should have ready by the end of November, and who checks it.",
+            "rows": []
+          },
+          {
+            "kind": "heading2",
+            "text": "What each depot needs",
+            "rows": []
+          },
+          {
+            "kind": "bullet",
+            "text": "A gritting contract confirmed in writing.",
+            "rows": []
+          },
+          {
+            "kind": "bullet",
+            "text": "Cold-start checks added to the daily vehicle inspection.",
+            "rows": []
+          },
+          {
+            "kind": "bullet",
+            "text": "A named duty manager for each weather warning level.",
+            "rows": []
+          },
+          {
+            "kind": "heading1",
+            "text": "Who checks what",
+            "rows": []
+          },
+          {
+            "kind": "table",
+            "text": "",
+            "rows": [
+              [
+                "Check",
+                "Owner",
+                "Due"
+              ],
+              [
+                "Gritting contracts",
+                "Site managers",
+                "14 November"
+              ],
+              [
+                "Vehicle checks",
+                "Fleet lead",
+                "21 November"
+              ],
+              [
+                "Duty rota",
+                "Operations",
+                "28 November"
+              ]
+            ]
+          }
+        ]
+      }
+    ],
+    "log": [
+      "Rewrote p0",
+      "Rewrote p1",
+      "Rebuilt the body with 8 block(s)"
+    ],
+    "checks": [
+      {
+        "name": "File opens cleanly",
+        "ok": true,
+        "detail": "DOCX parsed after the edit",
+        "severity": "error"
+      },
+      {
+        "name": "Styles, theme, headers and footers unchanged",
+        "ok": true,
+        "detail": "18 parts identical",
+        "severity": "error"
+      },
+      {
+        "name": "No parts dropped",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Logos and images kept",
+        "ok": true,
+        "detail": "2 image(s) in the original",
+        "severity": "error"
+      },
+      {
+        "name": "Page size and margins unchanged",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Untouched content is byte-identical",
+        "ok": true,
+        "detail": "0 element(s) checked",
+        "severity": "error"
+      },
+      {
+        "name": "Citations point at real sources",
+        "ok": true,
+        "detail": "0 source(s) cited",
+        "severity": "error"
+      },
+      {
+        "name": "No placeholder text",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      }
+    ]
+  },
+  "deck_rolled_forward_to_q3.pptx": {
+    "template": "meridian_board_deck.pptx",
+    "edits": [
+      {
+        "op": "set_text",
+        "target": "s0.sh2",
+        "paragraphs": [
+          "Q3 Network Review"
+        ]
+      },
+      {
+        "op": "set_text",
+        "target": "s0.sh3",
+        "paragraphs": [
+          "Operations board, October"
+        ]
+      },
+      {
+        "op": "set_text",
+        "target": "s1.sh3",
+        "paragraphs": [
+          "Hull opened in August: 9,120 consignments in eight weeks [S1]",
+          "On-time delivery at Hull reached 96.2% [S1]",
+          "\tThe best of any depot this quarter"
+        ]
+      },
+      {
+        "op": "set_chart_data",
+        "target": "s2.sh3",
+        "categories": [
+          "Felixstowe",
+          "Immingham",
+          "Tilbury",
+          "Grangemouth",
+          "Hull"
+        ],
+        "series": [
+          {
+            "name": "Q2",
+            "values": [
+              94.6,
+              89.8,
+              93.9,
+              95.2,
+              0.0
+            ]
+          },
+          {
+            "name": "Q3",
+            "values": [
+              95.1,
+              92.4,
+              94.0,
+              95.5,
+              96.2
+            ]
+          }
+        ]
+      },
+      {
+        "op": "add_slide",
+        "layout": "Title and Content",
+        "after": "s3",
+        "content": [
+          {
+            "placeholder": "title",
+            "paragraphs": [
+              "What Hull changes"
+            ]
+          },
+          {
+            "placeholder": "body",
+            "paragraphs": [
+              "Takes pressure off Immingham at peak",
+              "Shortens the northern trunk by a day"
+            ]
+          }
+        ],
+        "notes": "Added slide. Layout, footer and page number come from the template."
+      },
+      {
+        "op": "set_sources",
+        "sources": [
+          {
+            "key": "S1",
+            "title": "hull_depot_notes.txt",
+            "locator": "Full text",
+            "url": "",
+            "retrieved_at": "2026-11-01"
+          }
+        ]
+      }
+    ],
+    "log": [
+      "Rewrote s0.sh2",
+      "Rewrote s0.sh3",
+      "Rewrote s1.sh3",
+      "Replaced the data in chart s2.sh3",
+      "Added a \"Title and Content\" slide",
+      "Added 1 source(s) to the speaker notes"
+    ],
+    "checks": [
+      {
+        "name": "File opens cleanly",
+        "ok": true,
+        "detail": "PPTX parsed after the edit",
+        "severity": "error"
+      },
+      {
+        "name": "Masters, layouts and theme unchanged",
+        "ok": true,
+        "detail": "11 layouts identical",
+        "severity": "error"
+      },
+      {
+        "name": "Logos and images kept",
+        "ok": true,
+        "detail": "2 image(s) in the original",
+        "severity": "error"
+      },
+      {
+        "name": "Slide size unchanged",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Untouched slides are identical",
+        "ok": true,
+        "detail": "2 slide(s) checked",
+        "severity": "error"
+      },
+      {
+        "name": "Text fits its boxes",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Citations point at real sources",
+        "ok": true,
+        "detail": "1 source(s) cited",
+        "severity": "error"
+      },
+      {
+        "name": "No placeholder text",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      }
+    ]
+  },
+  "budget_with_new_depot.xlsx": {
+    "template": "meridian_depot_budget.xlsx",
+    "edits": [
+      {
+        "op": "insert_rows",
+        "sheet": "Budget",
+        "before_row": 9,
+        "rows": [
+          [
+            "Hull",
+            "East",
+            400.0,
+            412.0,
+            null,
+            "Watch"
+          ]
+        ]
+      },
+      {
+        "op": "set_cell",
+        "sheet": "Budget",
+        "ref": "D5",
+        "value": 1790.0
+      },
+      {
+        "op": "add_sheet",
+        "name": "Depot notes"
+      },
+      {
+        "op": "write_table",
+        "sheet": "Depot notes",
+        "start": "A1",
+        "headers": [
+          "Depot",
+          "Note"
+        ],
+        "rows": [
+          [
+            "Hull",
+            "Opened on 4 August [S1]"
+          ],
+          [
+            "Immingham",
+            "Over budget after the May berth closures"
+          ]
+        ]
+      },
+      {
+        "op": "set_sources",
+        "sources": [
+          {
+            "key": "S1",
+            "title": "hull_depot_notes.txt",
+            "locator": "Full text",
+            "url": "",
+            "retrieved_at": "2026-11-01"
+          }
+        ]
+      }
+    ],
+    "log": [
+      "Inserted 1 row(s) at Budget row 9",
+      "Set Budget!D5",
+      "Added sheet Depot notes",
+      "Wrote a 2-row table to Depot notes!A1",
+      "Listed 1 source(s) on the Sources sheet"
+    ],
+    "checks": [
+      {
+        "name": "File opens cleanly",
+        "ok": true,
+        "detail": "XLSX parsed after the edit",
+        "severity": "error"
+      },
+      {
+        "name": "Styles, theme, charts and images unchanged",
+        "ok": true,
+        "detail": "Compared byte for byte",
+        "severity": "error"
+      },
+      {
+        "name": "No parts dropped",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Charts kept",
+        "ok": true,
+        "detail": "1 chart(s) in the original",
+        "severity": "error"
+      },
+      {
+        "name": "Untouched cells keep their values and styles",
+        "ok": true,
+        "detail": "2 sheet(s) compared",
+        "severity": "error"
+      },
+      {
+        "name": "No formula errors",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      },
+      {
+        "name": "Citations point at real sources",
+        "ok": true,
+        "detail": "1 source(s) cited",
+        "severity": "error"
+      },
+      {
+        "name": "No placeholder text",
+        "ok": true,
+        "detail": "",
+        "severity": "error"
+      }
+    ]
+  }
+}
