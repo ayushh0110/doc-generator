@@ -157,4 +157,4 @@ Interactive docs are at `/docs` when the API is running.
 
 ## Scaling
 
-The API holds no state a second instance would need, apart from the two in-memory guards noted in the README. Long turns run on the request thread and stream, which is fine for a proof of concept. Under real load, turns would move to a job queue with the same event stream, files would move to S3, and LibreOffice would become its own worker because it's limited to one conversion at a time per process.
+The API holds no state a second instance would need, apart from the login lockouts and the one-turn-per-session guard, which are held in memory. Long turns run on the request thread and stream, which is fine for a proof of concept. Under real load, turns would move to a job queue with the same event stream, files would move to S3, and LibreOffice would become its own worker because it's limited to one conversion at a time per process.

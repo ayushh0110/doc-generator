@@ -119,11 +119,4 @@ These need PostgreSQL but no API keys. The model is scripted, so they cover the 
 
 ## Known limits
 
-- Rewriting a paragraph keeps the first run's style plus bold, so a sentence with several colours comes back in one.
-- Inserting workbook rows updates formulas, names, tables, merges, conditional formats, validations, charts and anchors, but not pivot table sources.
-- A duplicated slide shares its chart with the original.
-- The PPTX overflow check is an estimate from font and box size.
-- Previews come from LibreOffice and can differ slightly from Office.
 - Groq's free tier allows 8,000 tokens per minute. Short documents and decks are fine, with some waiting between calls, but a long document or large deck can go over the limit and fail with an error.
-- Login lockouts and the one-turn-per-session guard are in memory, so several API workers would need Redis.
-- Files are stored on local disk behind a small class in `storage.py`.
