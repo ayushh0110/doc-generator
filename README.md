@@ -1,80 +1,53 @@
 # Redline
 
-Chat assistant that creates and edits Word, PowerPoint and Excel files while keeping the original template intact.
+You upload a Word, PowerPoint or Excel file, tell it what to change in chat, and get the same file back with the change made. The logo, styles, slide master and formulas stay where they were. It can also make new documents and pull facts from your files or the web, with citations.
 
-Stack: Python, FastAPI, React, LangGraph, LangChain, Pinecone, PostgreSQL.
+Built with FastAPI, React, LangGraph, LangChain, Pinecone and PostgreSQL.
 
-## How it works
+The main idea: the model never writes the file. It sends back a list of small edits like `replace_text p14` or `insert_rows Budget 9`, Python applies them to the original, and a validator compares the result with what you uploaded. If something changed that shouldn't have, the model gets the error and tries again. After 3 tries it gives up and tells you why.
 
-The model doesn't write files. It returns a list of edits against ids in the document, like `replace_text p14`, `add_slide "Title and Content"` or `insert_rows Budget 9`. Python applies those to the uploaded file, then a validator compares the result with the original. If something changed that the plan didn't target, the plan goes back to the model with the reason. After three failed attempts nothing is saved and the user is told why.
+More on how it fits together in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Each edit creates a new version that can be compared with the last one, or restored.
+## Running it
 
-Agents in the LangGraph workflow: supervisor, template analyst, retriever, web researcher, writer, file generator, validator, responder. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+You need Python 3.12, Node 20+ and PostgreSQL 16. Install LibreOffice too if you want page previews and recalculated Excel values.
 
-## Setup
-
-Requires Python 3.12, Node 20+ and PostgreSQL 16. LibreOffice is optional, but page previews and workbook recalculation need it.
-
-| Key | Required | Without it |
-|---|---|---|
-| `GROQ_API_KEY` | Yes, unless you use Anthropic or llama.cpp | The assistant can't reply |
-| `PINECONE_API_KEY` | Yes for vector search | Falls back to Postgres full-text search |
-| `TAVILY_API_KEY` | No | Web research uses DuckDuckGo |
-
-### Database
-
-On Windows this installs PostgreSQL for the current user without admin rights, starts it, creates the database and writes the connection string to `backend/.env`:
+**Database.** On Windows this script installs Postgres for your user (no admin needed), starts it, creates the database and writes `DATABASE_URL` to `backend/.env`. It doesn't run as a service, so run it again after a reboot.
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/setup_local_postgres.ps1
 ```
 
-It doesn't run as a service, so run it again after a reboot.
+On anything else, create a database called `redline` and set `DATABASE_URL` yourself.
 
-Otherwise, create a database called `redline` and set `DATABASE_URL` in `backend/.env`.
-
-### Backend
+**Backend.** Copy `backend/.env.example` to `backend/.env` and add your keys. You need `GROQ_API_KEY` for the model. `PINECONE_API_KEY` is for vector search, and without it search falls back to Postgres full-text. `TAVILY_API_KEY` is optional, web research uses DuckDuckGo otherwise.
 
 ```bash
 python -m venv .venv
-```
-
-Activate it (`.venv\Scripts\activate` on Windows, `source .venv/bin/activate` elsewhere), then:
-
-```bash
+.venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-Copy `backend/.env.example` to `backend/.env` and fill in the keys. Then, from `backend/`:
-
-```bash
+cd backend
 alembic upgrade head
-```
-
-```bash
 uvicorn app.main:app --port 8000
 ```
 
-### Frontend
+(`source .venv/bin/activate` on Mac or Linux.)
 
-From `frontend/`:
+**Frontend.**
 
 ```bash
+cd frontend
 npm install
-```
-
-```bash
 npm run dev
 ```
 
-The app runs on http://localhost:5173.
+Then open http://localhost:5173 and make an account.
 
-### Other model options
+### Using a different model
 
-Anthropic: set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
+For Claude, set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
 
-llama.cpp: start a server, then set `LLM_PROVIDER=llamacpp` and `LLAMACPP_BASE_URL`. Small models struggled with the edit plans when I tried them.
+For a local model, start llama.cpp and set `LLM_PROVIDER=llamacpp` and `LLAMACPP_BASE_URL`. I tried a small Gemma model this way and it made too many mistakes on the edit plans, so use something bigger.
 
 ```bash
 llama-server -m path/to/model.gguf -ngl 99 -c 16384 --parallel 1 --jinja --port 8080
@@ -82,30 +55,21 @@ llama-server -m path/to/model.gguf -ngl 99 -c 16384 --parallel 1 --jinja --port 
 
 ### Docker
 
-Put `POSTGRES_PASSWORD`, `JWT_SECRET`, `GROQ_API_KEY` and `PINECONE_API_KEY` in a `.env` next to `docker-compose.yml`:
+Put `POSTGRES_PASSWORD`, `JWT_SECRET`, `GROQ_API_KEY` and `PINECONE_API_KEY` in a `.env` next to `docker-compose.yml`, then run `docker compose up --build`. It serves on http://localhost:8080. I haven't run this compose file end to end, so it may need small fixes.
 
-```bash
-docker compose up --build
-```
+## Using it
 
-The app is then on http://localhost:8080. I haven't run this compose file end to end, so it may need small fixes.
+Attach a file and say what you want. The files in `samples/templates` are good for trying it out:
 
-## Usage
+- `meridian_quarterly_report.docx`: "Change the title to Q3 Network Review and the subtitle to say October instead of July"
+- `meridian_board_deck.pptx`: "Add a slide after the depot scorecard on what Hull changes for the network"
+- `meridian_depot_budget.xlsx`: "Add Hull above the total: region East, budget 400, actual 412, status Watch"
+- Any of them: "What fonts and margins does this use?"
+- No file: "Make a short deck on the Port of Felixstowe, with sources"
 
-Attach a file and say what should change. Some things to try with `samples/templates`:
+Follow-ups like "shorten the second section" apply to the latest version. The right panel shows the rendered pages, what changed, the template structure, the sources and the validator's checks. You can go back to any earlier version from there.
 
-| Attach | Say |
-|---|---|
-| `meridian_quarterly_report.docx` | Change the title to Q3 Network Review and the subtitle to say October instead of July |
-| `meridian_quarterly_report.docx` | Using this template, write a one-page winter readiness plan |
-| `meridian_board_deck.pptx` | Add a slide after the depot scorecard on what Hull changes for the network |
-| `meridian_depot_budget.xlsx` | Add Hull above the total: region East, budget 400, actual 412, status Watch |
-| Any of them | What fonts and margins does this use? |
-| Nothing | Make a short deck on the Port of Felixstowe, with sources |
-
-Follow-ups like "shorten the second section" apply to the latest version.
-
-The panel on the right has tabs for the rendered preview, a redline against the previous version, the template structure, sources, and validator checks.
+`samples/README.md` explains the sample files, including real output from the model.
 
 ## Tests
 
@@ -113,9 +77,7 @@ The panel on the right has tabs for the rendered preview, a redline against the 
 python -m pytest backend/tests
 ```
 
-These need PostgreSQL but no API keys. The model is scripted, so they cover the graph, database, engines and API, not the quality of a real model's output.
-
-`python samples/generate_outputs.py` rebuilds the fixed sample outputs.
+These need Postgres but no API keys. The model is scripted, so they test the graph, database, engines and API, not how good a real model's writing is.
 
 ## Known limits
 

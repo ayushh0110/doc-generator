@@ -1,160 +1,76 @@
 # Architecture
 
-## Overview
+React talks to FastAPI over REST, and chat replies stream back as server-sent events. Each chat message runs through a LangGraph workflow. Postgres holds users, messages, sources and versions, and uploaded files live on local disk. Pinecone holds the search vectors, and LibreOffice renders previews.
+
+## The agent workflow
+
+The graph is in `backend/app/graph/builder.py` and the nodes are in `nodes.py`.
 
 ```
-Browser (React)
-    |  REST and server-sent events
-FastAPI
-    |-- Auth, sessions, files, artifacts
-    |-- LangGraph workflow, checkpointed in Postgres
-    |       |-- Document engines: docx, pptx, xlsx
-    |       |-- Search: Pinecone, or Postgres full-text
-    |       |-- Web: Tavily, or DuckDuckGo plus a fetcher
-    |       '-- LLM through LangChain: Groq, Anthropic or llama-server
-    |-- PostgreSQL: users, messages, files, chunks, sources, versions, citations
-    |-- Local file storage: uploads, versions, previews
-    '-- LibreOffice: previews and workbook recalculation
+supervisor -> template_analyst -> retriever -> web_researcher -> writer
+                                                                   |
+                 responder <- publisher <- validator <- builder <--'
 ```
 
-## The agent graph
+Steps get skipped when they aren't needed. A plain question goes from the supervisor straight to the responder, and research only runs if the supervisor asks for it.
 
-Defined in `backend/app/graph/builder.py`, with the nodes in `nodes.py`.
+- **supervisor** works out what the message wants: which file to work on, and whether it needs a search.
+- **template_analyst** reads the file's structure and content.
+- **retriever** searches this session's uploads, and **web_researcher** searches the web. Both register what they find as sources.
+- **writer** produces the list of edits.
+- **builder** applies the edits to the original file.
+- **validator** compares the result with the original.
+- **publisher** saves the new version with its changes and citations.
+- **responder** writes the reply.
 
-```
-START -> supervisor
-supervisor -> template_analyst   when a document or a file question is involved
-           -> retriever          when uploaded files need searching
-           -> web_researcher     when outside facts are needed
-           -> responder          for plain chat
+Only the supervisor, writer and responder call the model. Everything that touches a file is plain code, which is why the "nothing else changed" check can be tested at all.
 
-template_analyst -> retriever -> web_researcher -> writer (each skipped if not needed)
+If the edits can't be applied or a check fails, the reason goes back to the writer. After 3 attempts nothing is saved and the responder explains what went wrong.
 
-writer -> builder -> validator -> publisher -> responder -> END
-   ^        |            |
-   |        |            '-- failed checks go back to the writer, with the reasons
-   |        '--------------- edits that can't apply go back too
-   '------------------------ after 3 attempts: gave_up -> responder, nothing published
-```
-
-| Node | Job | Uses the model? |
-|---|---|---|
-| supervisor | Decides intent, target file and what research is needed | Yes |
-| template_analyst | Reads the structure and content of the target | No |
-| retriever | Searches this session's uploads and registers sources | No |
-| web_researcher | Searches the web and registers sources | No |
-| writer | Produces the edit plan | Yes |
-| builder (file generator) | Applies the plan to the original file | No |
-| validator | Compares the result with the source | No |
-| publisher | Saves the version, the diff and the citations | No |
-| responder | Writes the reply, streamed | Yes |
-
-Only three nodes call the model. Everything that touches a file is deterministic, which is what makes the preservation guarantee testable.
-
-State is checkpointed per session with `PostgresSaver`. Everything specific to a turn is reset at the start of that turn (`runner.py`).
+LangGraph's Postgres checkpointer keeps state per session. `runner.py` resets the per-turn fields at the start of each message.
 
 ## Document engines
 
-`backend/app/documents/`. Each engine has the same four methods:
+These are in `backend/app/documents/`. Each format has an engine with the same four methods: `analyse` (the structure shown in the UI), `outline` (the content, with the ids the writer has to use), `apply` and `preservation_checks`.
 
-| Method | Returns |
-|---|---|
-| `analyse(path)` | The structure profile shown in the Structure tab and given to the writer |
-| `outline(path)` | Content with the ids the writer must use |
-| `apply(src, ops, dest)` | Writes the edited file, and reports what it was allowed to change |
-| `preservation_checks(src, dest, result)` | Before and after comparison |
+The edits themselves are Pydantic models in `ops.py`. They're also the schema the model has to follow, so it can't ask for anything the engines don't support.
 
-The operations are Pydantic models in `ops.py`. They double as the structured output schema, so the model can only ask for what the engines can do.
+**Word** uses python-docx plus some direct XML. New content is copied from the template's own examples, so a new heading is an existing heading with different text, and it keeps the real spacing and numbering. Tables work the same way and get resized to fit the template's width.
 
-### DOCX
+**PowerPoint** uses python-pptx. New slides come from the deck's real layouts and empty placeholders get removed. python-pptx doesn't put footers or page numbers on new slides, so the engine copies them over if the other slides have them.
 
-`python-docx` plus direct XML edits. New content is cloned from the template's own examples of each kind. A new heading is a copy of an existing heading with its text swapped, so it carries the real spacing and numbering. Tables are cloned too, resized to fit inside the template's total width.
+**Excel** is the odd one out. openpyxl only reads here, because saving through it rebuilds the whole file and can lose anything it doesn't model. So edits patch the sheet XML directly and every other part stays byte-for-byte the same. The downside is that inserting a row means updating references by hand: formulas, names, tables, merged cells, conditional formats, validations, chart ranges and anchors. A range ending right above the new row gets extended, so a `SUM` picks up a row added above the total.
 
-### PPTX
+After an Excel edit the cached formula results are stale. They get cleared, LibreOffice recalculates a throwaway copy, and only the values are copied back. LibreOffice's rewritten file never reaches the user.
 
-`python-pptx` plus XML. Text edits reuse each paragraph's formatting. New slides use real layouts, and empty placeholders are removed. `python-pptx` doesn't copy footers or page numbers to new slides, so the engine does, when the deck's other slides have them.
+## What the validator checks
 
-### XLSX
-
-Direct XML patching. `openpyxl` is only used for reading, because saving through it rebuilds the whole package and can lose what it doesn't model. Patching leaves every other part byte-for-byte as uploaded.
-
-Inserting a row updates references across the workbook: formulas on all sheets, defined names, tables, merged cells, conditional formats, data validations, chart ranges and drawing anchors. A range ending directly above the insert is extended, so a `SUM` over a column picks up rows added right above the total.
-
-After an edit, cached formula results are cleared and the calc chain is removed. LibreOffice then recalculates a throwaway copy, and only the values are copied back. That way previews and other readers see correct numbers, and LibreOffice's rewrite of the file never reaches the user.
-
-## Validation
-
-`validate.py` and each engine's `preservation_checks`:
-
-- The file opens and parses after the edit.
-- Package parts the plan didn't target are unchanged, by canonical XML hash or by exact bytes for XLSX.
-- No images were lost.
-- Page setup and slide size are unchanged.
-- Body elements, slides or cells the plan didn't target are identical and in order.
-- New PPTX text fits its box. Overflow that was already in the template doesn't count.
-- Workbooks contain no formula errors.
-- Every `[S#]` in new text refers to a real source.
+- The file still opens.
+- Parts the plan didn't touch are unchanged, and so are the paragraphs, slides or cells it didn't target.
+- No images were lost, and page setup and slide size are the same.
+- New slide text fits its box. This is an estimate from font and box size.
+- No formula errors in workbooks.
+- Every `[S1]` style citation points at a real source.
 - No placeholder text.
 
-## RAG and citations
+The checks protect the design, not the meaning. If the model writes a bad sentence in the right place, they'll still pass.
 
-On upload, text is split into passages with a locator such as `Slide 4`, `Page 3`, `Section "Summary"` or `Sheet "Budget"`. Each passage's text is stored in Postgres, and in Pinecone when a key is set. Pinecone embeds it with its hosted model, in a namespace per session. Results are always re-checked against the session in SQL.
+## Search and citations
 
-Each passage or page that feeds a turn gets a stable key within the session: S1, S2 and so on. The writer cites by key.
+On upload, text is split into passages that remember where they came from, like `Slide 4` or `Sheet "Budget"`. The text goes in Postgres and the vectors go in Pinecone, with one namespace per session. Results are checked against the session again in SQL, so one session can't see another's files. With no Pinecone key, search uses Postgres full-text instead.
 
-Citations are read back from the finished file, not from the plan, so deleting a cited sentence also drops its source. The result is written in three places:
-
-| Where | How |
-|---|---|
-| Database | `citations` table: element, excerpt and source |
-| In the file | DOCX Sources section, PPTX speaker notes, XLSX Sources sheet |
-| UI | Click `S1` in a reply to jump to the source and see where this version uses it |
+Anything that feeds a turn gets a key like S1 that stays the same for the whole session, and the writer cites by key. Citations are read back from the finished file rather than from the plan, so deleting a cited sentence drops its source too. They end up in a `citations` table, in the file (a Sources section in Word, speaker notes in PowerPoint, a Sources sheet in Excel) and in the UI.
 
 ## Security
 
-| Risk | Handling |
-|---|---|
-| Disguised files | Extension and content must agree |
-| Zip bombs | Limits on entry count, unpacked size and compression ratio |
-| XXE and entity bombs | Any XML part with a DTD is rejected, using `defusedxml` |
-| Path traversal | Zip entry paths are checked, and stored names are random |
-| Macros | Macro-enabled formats and `vbaProject.bin` are rejected |
-| Links to local files | Rejected. Other external links are kept and flagged, and never followed |
-| Access between users | Every lookup goes through ownership. Other users' items return 404 |
-| Search leaks | Search is namespaced per session, and results are re-filtered in SQL |
-| SSRF from web research | Fetches only reach public addresses, and each redirect is re-checked |
-| Prompt injection | Documents and web text are wrapped as data, with an instruction not to obey them. The model also has no tools. It can only return edits to the current file, which the validator checks |
-| Passwords and tokens | Argon2 hashes, signed JWTs that expire, and a lockout after repeated failed logins |
+Uploads are checked before any parser sees them (`documents/safety.py`). The extension has to match the content, zip bombs and unsafe paths are rejected, and so is any XML with a DTD. Macro files and links to local files are refused too. Stored files get random names.
 
-Prompt injection can't be fully prevented: a hostile document could still influence the wording of a reply. The design limits what such text could do, because no model output runs as code or reaches anything outside the file being edited.
+Users log in with JWTs, and passwords are hashed with Argon2. Every lookup checks ownership, and someone else's item returns 404. Web research only fetches public addresses and rechecks each redirect, so a search result can't point it at something internal.
 
-## Data model
-
-```
-users 1-* chat_sessions 1-* messages
-                        1-* files 1-* chunks
-                        1-* sources
-                        1-* artifacts 1-* artifact_versions 1-* citations *-1 sources
-```
-
-`alembic/versions` holds the schema. Reverting creates a new version, so history is never rewritten.
-
-## API
-
-Interactive docs are at `/docs` when the API is running.
-
-| Method and path | Purpose |
-|---|---|
-| `POST /api/auth/register`, `POST /api/auth/login` | Accounts |
-| `GET, POST /api/sessions`, `PATCH, DELETE /api/sessions/{id}` | Sessions |
-| `GET /api/sessions/{id}/messages`, `/sources`, `/artifacts`, `/files` | Session contents |
-| `POST /api/sessions/{id}/files` | Upload |
-| `POST /api/sessions/{id}/chat` | Run a turn, streamed as SSE |
-| `GET /api/files/{id}/analysis`, `/download` | Uploaded files |
-| `GET /api/versions/{id}`, `/download`, `/preview`, `/preview/{page}`, `/structure`, `/citations` | Versions |
-| `POST /api/artifacts/{id}/revert` | Restore a version |
-| `GET /api/health` | What's configured |
+Prompt injection can't be fully prevented. Documents and web pages are marked as data in the prompts, and the model has no tools, so the most it can do is return edits to the current file, and those still go through the validator. A hostile document could still affect the wording of a reply.
 
 ## Scaling
 
-The API holds no state a second instance would need, apart from the login lockouts and the one-turn-per-session guard, which are held in memory. Long turns run on the request thread and stream, which is fine for a proof of concept. Under real load, turns would move to a job queue with the same event stream, files would move to S3, and LibreOffice would become its own worker because it's limited to one conversion at a time per process.
+The API is nearly stateless, apart from login lockouts and the one-turn-per-session guard, which are in memory and would need Redis with several workers. Turns run on the request thread, which is fine for a proof of concept. Under real load I'd move turns to a job queue, files to S3, and LibreOffice to its own worker, since it only does one conversion at a time.
+
+The API docs are at `/docs` when the server is running.
